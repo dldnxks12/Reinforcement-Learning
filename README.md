@@ -1,1 +1,1 @@
-# Cocel-RL
+### 2023-1 RL study log
