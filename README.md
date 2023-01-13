@@ -1,8 +1,15 @@
 ### 2023-1 RL study log
 
 
-- GPU Setting
+- GPU Setting - ok
 - Reinforcement learning study 
 
-     - RL Lab book 
-     - RL KW Back prof.
+     - RL Baek
+     - RL Lee
+     - RL Lab book
+
+- Mathematical Knowledges
+ 
+    - Mathematics for Machine Learning
+    - Probability and Statistics
+    - Linear Algebra
