@@ -36,16 +36,14 @@ class Env:
     # 다음 State에서 얻을 수 있는 state value function
     def get_reward(self, state, action):
         next_state = self.state_after_action(state, action)
-        return self.reward[next_state[0]][next_state[1]]
+        return self.reward[next_state[0]][next_state[1]] # [행, 열]
 
     # action을 취하고 난 후 다음의 state --- Policy에 따라 이동할 것
     def state_after_action(self, state, action_index):
         action = ACTIONS[action_index]
-        return self.check_boundary([state[0] + action[0], state[1] + action[1]])
+        return self.check_boundary([state[0] + action[0], state[1] + action[1]]) # Check if it's stilll in the grid world
 
-
-    # @staticmethod ---- instance를 만들지 않고서도 바로 호출이 가능한 함수
-    @staticmethod
+    @staticmethod #  ---- instance를 만들지 않고서도 바로 호출이 가능한 함수
     def check_boundary(state):
         # 행의 왼쪽, 오른쪽 경계에서 바깥으로 나가는 행동을 하면 제자리로 돌아오도록.
         state[0] = (0 if state[0] < 0 else WIDTH - 1
@@ -57,14 +55,13 @@ class Env:
         return state
 
     # 해당 State에서 Action을 취했을 때 다음 State로 넘어가는 확률 return ---- P(s, a)
-    # 이 예제에서는 Deterministic하다. Action이 정해지면 다음 State 위치 바로 결정
+    # 이 예제에서는 Deterministic -> transition probability = 1. Action이 정해지면 다음 State는 1의 확률로 바로 결정
     def get_transition_prob(self, state, action):
         return self.transition_probability
 
     # State 정보 return
     def get_all_states(self):
         return self.all_state
-
 
 # # DP GUI Setting
 class GraphicDisplay(tk.Tk):
