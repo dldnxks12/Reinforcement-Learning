@@ -23,7 +23,7 @@ for epoch in range(Epochs):
     hypothesis = x_train*W + b # y = x*W + b
 
     # Cost function - loss function
-    cost = torch.mean( (hypothesis - y_train)**2)
+    cost = torch.mean( (hypothesis - y_train)**2 )
 
     # Optimizing
     optimizer.zero_grad() # 미분을 통해 얻은 기울기를 0으로 초기화 -> 새로운 가중치 편향에 대해 새로 계산해야한다.
