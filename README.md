@@ -1,4 +1,4 @@
-### 2023-1 RL study log
+### 2023-1 study log
 
 
 - GPU Setting - ok
