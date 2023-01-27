@@ -1,15 +1,10 @@
-from datetime import datetime
 from collections import deque # for replay buffer
 
-from torch.distributions import Categorical
-
-import os
 import sys # for debugging
 import gym
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 import random
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,9 +14,9 @@ print(f"Currently working on {device}")
 class QNetwork(nn.Module):
       def __init__(self):
             super().__init__()
-            self.fc = nn.Linear(4, 48) # Input : 4개의 state
-            self.fcQ1 = nn.Linear(48, 64)
-            self.fcQ2 = nn.Linear(64, 2) # Output : 2개 Action - left/right
+            self.fc   = nn.Linear(4, 256) # Input : 4개의 state
+            self.fcQ1 = nn.Linear(256, 32)
+            self.fcQ2 = nn.Linear(32, 2) # Output : 2개 Action - left/right
 
       def forward(self, states):
             states  = self.fc(states)
@@ -34,17 +29,17 @@ class QNetwork(nn.Module):
 
 class ReplayBuffer_():
       def __init__(self):
-            self.buffer = deque(maxlen = 50000)
+            self.buffer = deque(maxlen = 10000)
 
       def put(self, transition):
             self.buffer.append(transition)
 
       def sample(self, n):
             mini_batch = random.sample(self.buffer, n)
-            states, actions, rewards, next_states, terminateds = [], [], [], [], []
+            states, actions, rewards, next_states, terminateds, truncateds = [], [], [], [], [], []
 
             for transition in mini_batch:
-                  state, action, reward, next_state, terminated = transition
+                  state, action, reward, next_state, terminated, truncated = transition
 
                   """
                   print(state, type(state))           # Tensor
@@ -52,6 +47,7 @@ class ReplayBuffer_():
                   print(reward, type(reward))         # float
                   print(next_state, type(next_state)) # Tensor
                   print(terminated, type(terminated)) # bool
+                  print(truncated, type(truncated))   # bool 
                   """
 
                   states.append(state)
@@ -59,8 +55,9 @@ class ReplayBuffer_():
                   rewards.append(reward)
                   next_states.append(next_state)
                   terminateds.append(terminated)
+                  truncateds.append(truncated)
 
-            return states, actions, rewards, next_states, terminateds
+            return states, actions, rewards, next_states, terminateds, truncateds
 
       def size(self):
             return len(self.buffer)
@@ -68,42 +65,45 @@ class ReplayBuffer_():
 Q = QNetwork().to(device)
 Q_target = QNetwork().to(device)
 
-max_time_steps = 1000
+Q_target.load_state_dict(Q.state_dict()) # Weight Synchronize
+Q_optimizer = torch.optim.Adam(Q.parameters(), lr = 0.001) # Define Optimizer
+
+max_time_steps = 2000
 reward_history = deque(maxlen = 1000)
 ReplayBuffer = ReplayBuffer_()
 gamma = 0.99
 
-Q_optimizer = torch.optim.Adam(Q.parameters(), lr = 0.001)
-
 def Update_Q(buffer, Q, Q_target, Q_optimizer):
-      states, actions, rewards, next_states, terminateds = buffer.sample(128)
+      states, actions, rewards, next_states, terminateds, truncateds = buffer.sample(128)
 
       loss = 0
-      for state, action, reward, next_state, terminated in zip(states, actions, rewards, next_states, terminateds):
+      for state, action, reward, next_state, terminated, truncated in zip(states, actions, rewards, next_states, terminateds, truncateds):
 
             """
             print(state, type(state))           # Tensor
             print(action, type(action))         # int
             print(reward, type(reward))         # float
-            print(next_state, type(next_state)) # Tensor
+            print(next_state, type(next_state)) # Tensor 
             print(terminated, type(terminated)) # bool
+            print(truncated, type(truncated))   # bool 
             """
 
-            if terminated == 0:
+            # Just inference, no weight update
+            if (terminated == True) or (truncated == True):
                   y = reward
             else:
-                  y = reward * gamma*max(Q_target(next_state))
+                  y = reward + ( gamma * max(Q_target(next_state)) )
 
             action = int(action)
             loss += (y - Q(state)[action])**2
 
-      loss = loss/128
+      loss = loss / 128
 
       Q_optimizer.zero_grad()
       loss.backward()
       Q_optimizer.step()
 
-env = gym.make("CartPole-v0", render_mode = "human")
+env = gym.make("CartPole-v1") #, render_mode = "human")
 
 for episode in range(10000):
 
@@ -112,32 +112,36 @@ for episode in range(10000):
       state = torch.tensor(state[0]).float().to(device)
 
       for t in range(1, max_time_steps+1):
+
             with torch.no_grad():
                   if random.random() < 0.01:
                         action = env.action_space.sample()
                   else:
                         action = torch.argmax(Q(state)).item()
 
+            if random.random() < 0.01:
+                  action = env.action_space.sample()
+            else:
+                  action = torch.argmax(Q(state)).item()
             next_state, reward, terminated, truncated, info = env.step(action)
             next_state = torch.tensor(next_state).float().to(device)
-
             total_reward += reward
 
             # Append to replay buffer
-            ReplayBuffer.put([state, action, reward, next_state, terminated])
+            ReplayBuffer.put([state, action, reward, next_state, terminated, truncated])
 
             # Update Q Network
             if ReplayBuffer.size() > 1000:
                   Update_Q(ReplayBuffer, Q, Q_target, Q_optimizer)
 
-                  # Periodic Update
-                  if episode % 10 == 0:
-                        Q_target.load_state_dict(Q.state_dict())
-
             if terminated or truncated:
                   break
 
             state = next_state
+
+      # Periodic Update
+      if episode % 10 == 0:
+            Q_target.load_state_dict(Q.state_dict())
 
       reward_history.append(total_reward)
       avg = sum(reward_history) / len(reward_history)
