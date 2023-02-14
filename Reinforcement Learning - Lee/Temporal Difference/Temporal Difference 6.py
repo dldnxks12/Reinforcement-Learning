@@ -88,7 +88,7 @@ Buffer = ReplayBuffer()
 env = gym.make('CartPole-v0')
 
 max_time_step = 1000
-MAX_EPISODE = 1000
+MAX_EPISODE = 200
 for episode in range(MAX_EPISODE):
 
     observation = env.reset()[0]
@@ -123,8 +123,22 @@ for episode in range(MAX_EPISODE):
 
     print(f"Episode : {episode} | Total_reward : {total_reward}")
 
+env.close()
 
+#test
+env_test = gym.make('CartPole-v0', render_mode = 'human')
+episode = 0
 
+state = env_test.reset()[0]
+while episode < 10:
+    state = torch.tensor(state).to(device)
+    action = torch.argmax(Q(state)).item()
+    next_state, reward, terminated, truncated, info = env_test.step(action)
+    state = next_state
 
+    if terminated or truncated:
+        state = env_test.reset()
+
+env_test.close()
 
 
