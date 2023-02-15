@@ -12,7 +12,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Currently on {device}")
 

@@ -1,9 +1,3 @@
-"""
-
-Twin-delayed deep deterministic poligy gradient with noisy network method
-
-"""
-
 import gym
 import sys
 import math
@@ -19,10 +13,15 @@ import torch.nn.functional as F
 from collections import deque
 
 
-# Import Noisy Network
-from NoisyNetwork import NoisyLayer
-
 class ReplayBuffer():
+    """
+    1. define buffer
+    2. define functions
+        - put sample
+        - return samples
+        - calc current buffer size
+    """
+
     def __init__(self):
         super().__init__()
         self.buffer = deque(maxlen=20000)
@@ -48,6 +47,15 @@ class ReplayBuffer():
         next_states = torch.tensor(next_states, device=device)
         terminateds = torch.tensor(terminateds, device=device)
         truncateds = torch.tensor(truncateds, device=device)
+
+        """
+        print(type(states))  # tensor
+        print(type(actions))  # tensor
+        print(type(rewards))  # numpy
+        print(type(next_states))  # tensor
+        print(type(terminateds))  # bool
+        print(type(truncateds))  # bool
+        """
 
         return states, actions, rewards, next_states, terminateds, truncateds
 
@@ -205,6 +213,7 @@ gamma = 0.99
 tau = 0.001
 
 # Define gym environment
+# env = gym.make('Pendulum-v1', render_mode = 'human')  # Rendering = On
 env = gym.make('Pendulum-v1')  # Rendering = Off
 
 # main
@@ -236,6 +245,6 @@ for episode in range(MAX_EPISODE):
 
         state = next_state
 
-    Y.append(total_reward)
     print(f"# - Episode : {episode} | Total reward : {total_reward} - #")
 env.close()
+
