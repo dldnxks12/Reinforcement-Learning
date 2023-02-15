@@ -1,9 +1,19 @@
 """
 
 *reference : https://github.com/thomashirtz/noisy-networks
-
+*reference : https://github.com/thomashirtz/q-learning-algorithms/blob/master/noisy_networks/noisy_deep_q_learning.py
 
 Noisy Network를 바로 적용하기 편하게 Module로 만들어놓자.
+
+장점 :
+
+    상당한 exploration이 필요할 때 요긴하다. 주로 NN base approach에서 성능이 좋을 것 같다. (Continuous space)
+
+단점 :
+
+    Computational cost가 올라간다. (Especially in case of non-factorized gaussian noise)
+    Noisy gradient가 있기 때문에 agent가 조금 덜 안정적일 수 있다.
+    최적의 Sigma, uniform bound 등의 설정이 조금 모호해서 이것 또한 tuning이 필요할 수 있다.
 
 """
 import sys
