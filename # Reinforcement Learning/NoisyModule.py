@@ -1,5 +1,6 @@
 """
 
+*reference : https://liger82.github.io/rl/rl/2021/09/01/DeepRLHandsOn-ch08-DQN_Extensions.html
 *reference : https://github.com/thomashirtz/noisy-networks
 *reference : https://github.com/thomashirtz/q-learning-algorithms/blob/master/noisy_networks/noisy_deep_q_learning.py
 
@@ -88,7 +89,7 @@ class NoisyLayer(nn.Module):
         return nn.functional.linear(x, weight = noisy_weight, bias = noisy_bias) # nn.Module의 weight, bias를 내껄로 설정
 
     def sample_noise(self):
-        self.epsilon_weight = self.get_noise_tensor((self.output_features, self.input_features)) # q x p
+        self.epsilon_weight = self.get_noise_tensor((self.output_features, self.input_features))  # q x p
         self.epsilon_bias   = self.get_noise_tensor((self.output_features,))                      # p x 1
 
     def get_noise_tensor(self, features : int):
