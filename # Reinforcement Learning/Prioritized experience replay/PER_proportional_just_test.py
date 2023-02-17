@@ -92,9 +92,7 @@ def train(per_memory, Q1, Q1_target, P, P_target, Q1_optimizer, P_optimizer):
     # Add Noise & clamping
     noise_bar = torch.clamp(torch.randn_like(actions) * 0.1, -0.5, 0.5)
 
-
     with torch.no_grad():
-
 
         acts = torch.clamp((P_target(next_states) + noise_bar), -2, 2)
         next_q_values = Q1_target(next_states, acts)
@@ -102,6 +100,7 @@ def train(per_memory, Q1, Q1_target, P, P_target, Q1_optimizer, P_optimizer):
 
     q_values = Q1(states, actions)
     delta = q_values - y
+
     per_memory.update(deltas= delta.tolist(), indexes = indexes)
 
     loss_Q1 = (delta.pow(2) * weights).mean()
