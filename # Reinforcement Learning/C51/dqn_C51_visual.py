@@ -31,10 +31,18 @@ class QNetwork(nn.Module): # In state : 4 Out action : 2
     def __init__(self):
         super().__init__() # nn.Module의 constructor bringing
 
-        self.fc1 = nn.Linear(N_STATE, 256)
-        self.fc2 = nn.Linear(256, 256)
+        self.fc1 = nn.Linear(N_STATE, 512)
+        self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 256)
+
         self.fc_q = nn.Linear(256, N_ATOM*N_ACTION)
+
+        """
+        
+            return Q(state, left) , Q(state, right)        
+            Q(state, left) -> 51개의 Atom의 Softmax 처리된 distribution의 형태  
+                    
+        """
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -83,20 +91,14 @@ class ReplayBuffer():
     def size(self):
         return len(self.buffer)
 
-MAX_EPISODE    = 1000
-max_time_steps = 2000
-reward_history = deque(maxlen = 1000)
-ReplayBuffer = ReplayBuffer()
-gamma = 0.99
-batch_size = 32
-
 N_ATOM   = 51
 N_STATE  = 4
 N_ACTION = 2
-V_MAX    = 30
+V_MAX    = 10
 V_MIN    = -10
 DELTA_ATOM = (V_MAX - V_MIN) / (N_ATOM - 1)
-ATOM       = np.array([V_MIN + (i*DELTA_ATOM) for i in range(N_ATOM)])
+ATOM       = torch.FloatTensor(np.array([V_MIN + (i*DELTA_ATOM) for i in range(N_ATOM)])).to(device)
+
 
 def Update_Q(buffer, Q, Q_target, Q_optimizer):
     states, actions, rewards, next_states, terminateds, truncateds = buffer.sample(batch_size)
@@ -106,49 +108,40 @@ def Update_Q(buffer, Q, Q_target, Q_optimizer):
     rewards = torch.unsqueeze(rewards, dim=1)
 
     # Make Value functions
-    probs_   = Q(states).detach().cpu().numpy()
+    probs_   = Q(states)
     actions  = torch.squeeze(actions, dim = 1)
 
-    probs_next_ = Q_target(next_states).detach().cpu().numpy()  # 2 x 51
-    Z_next = np.multiply(probs_next_, ATOM)  # Value distribution (with 51 atoms)
-    Z_next_sum = np.sum(Z_next, axis = 2)
-    next_optimal_action_idxes = np.argmax(Z_next_sum, axis=1)  # 64,
-
-    probs = np.zeros((batch_size, N_ATOM))
-    probs_next = np.zeros((batch_size, N_ATOM))
-    m_prob = np.zeros((batch_size, N_ACTION, N_ATOM))  # 64 x 51
+    probs_next_ = Q_target(next_states)  # 2 x 51
+    Z_next = (probs_next_ * ATOM)  # Value distribution (with 51 atoms)
+    Z_next_sum = torch.sum(Z_next, 2)
+    next_optimal_action_idxes = torch.argmax(Z_next_sum, axis=1)  # 64,
 
     # target probs -> cross entropy loss
+    m_prob     = torch.zeros((batch_size,N_ACTION, N_ATOM)).to(device) # 64 x 51
+    probs      = torch.zeros((batch_size, N_ATOM)).to(device)
+    probs_next = torch.zeros((batch_size, N_ATOM)).to(device)
+
     for i in range(batch_size):
         probs[i] = probs_[i][actions[i]]
         probs_next[i] = probs_next_[i][next_optimal_action_idxes[i]]
 
     for i in range(batch_size):
-        if terminateds[i]:
-            Tz = min(V_MAX, max(V_MIN, rewards[i])) # Tz = r + gamma*(Z) -> inducing disjoints of atoms
+        for j in range(N_ATOM):
+            Tz = min(V_MAX, max(V_MIN, rewards[i] + (gamma * ATOM[j]) * (1 - terminateds[i]))) # Tz = r + gamma*(Z) -> inducing disjoints of atoms
             bj = (Tz - V_MIN) / DELTA_ATOM
             m_l, m_u = math.floor(bj), math.ceil(bj)
-            m_prob[i][actions[i]][int(m_l)] += (m_u - bj)
-            m_prob[i][actions[i]][int(m_u)] += (bj  - m_l)
-        else:
-            for j in range(N_ATOM):
-                Tz = min(V_MAX, max(V_MIN, rewards[i] + (gamma * ATOM[j]))) # Tz = r + gamma*(Z) -> inducing disjoints of atoms
-                bj = (Tz - V_MIN) / DELTA_ATOM
-                m_l, m_u = math.floor(bj), math.ceil(bj)
-                m_prob[i][actions[i]][int(m_l)] += probs_next[i][j] * (m_u - bj)
-                m_prob[i][actions[i]][int(m_u)] += probs_next[i][j] * (bj  - m_l)
 
-    m_prob_ = np.zeros((batch_size, N_ATOM))
+            if bj != 50:
+                m_prob[i][actions[i]][int(m_l)] += probs_next[i][j] * (m_u - bj.item())
+                m_prob[i][actions[i]][int(m_u)] += probs_next[i][j] * (bj.item()  - m_l)
+
+    m_prob_ = torch.zeros((batch_size, N_ATOM)).to(device)
     for i in range(batch_size):
         m_prob_[i] = m_prob[i][actions[i]]
 
-    m_prob_, probs = torch.FloatTensor(m_prob_).to(device), torch.FloatTensor(probs).to(device)
-    loss = loss_fc(m_prob_.requires_grad_(True), probs.requires_grad_(True))
+    loss = loss_fc(m_prob_, probs)
+
     print(loss)
-
-    #loss = target_distribution * (-torch.log(probs + 1e-8))
-    #loss = torch.mean(loss).requires_grad_(True)
-
     Q_optimizer.zero_grad()
     loss.backward()
     Q_optimizer.step()
@@ -158,49 +151,55 @@ Q = QNetwork().to(device)
 Q_target = QNetwork().to(device)
 
 Q_target.load_state_dict(Q.state_dict()) # Weight Synchronize
-Q_optimizer = torch.optim.Adam(Q.parameters(), lr = 0.001) # Define Optimizer
+Q_optimizer = torch.optim.Adam(Q.parameters(), lr = 0.005) # Define Optimizer
 
-env = gym.make("CartPole-v1") #, render_mode = "human")
+MAX_EPISODE    = 1000
+max_time_steps = 2000
+reward_history = deque(maxlen = 1000)
+ReplayBuffer = ReplayBuffer()
+gamma = 0.99
+batch_size = 32
+
+env = gym.make("CartPole-v1") #
 
 for episode in range(MAX_EPISODE):
 
-      total_reward = 0 # total reward along the episode
-      state = env.reset()
-      state = torch.tensor(state[0]).float().to(device)
+    total_reward = 0 # total reward along the episode
+    state = env.reset()
+    state = torch.tensor(state[0]).float().to(device)
 
-      for t in range(1, max_time_steps+1):
-            with torch.no_grad():
-                if random.random() < 0.01:
-                    action = env.action_space.sample()
-                else:
-                    # Make Value function
-                    probs = Q(state).cpu().numpy() # 2 x 51
-                    Z     = np.multiply(probs, ATOM) # Value distribution (with 51 atoms)
-                    Z_sum = np.sum(Z, axis = 1)      # (2, 51) x (51, ) -> (2, )
-                    action = np.argmax(Z_sum, axis = 0)
+    for t in range(1, max_time_steps+1):
+        if random.random() < 0.01:
+            action = env.action_space.sample()
+        else:
+            # Make Value function
+            probs = Q(state).to(device) # 2 x 51
+            Z     = (probs * ATOM.to(device)) # Value distribution (with 51 atoms)
+            Z_sum = torch.sum(Z, 1)      # (2, 51) x (51, ) -> (2, )
+            action = torch.argmax(Z_sum, axis = 0).item()
 
-            next_state, reward, terminated, truncated, info = env.step(action)
-            next_state = torch.tensor(next_state).float().to(device)
-            total_reward += reward
+        next_state, reward, terminated, truncated, info = env.step(action)
+        next_state = torch.tensor(next_state).float().to(device)
+        total_reward += reward
 
-            # Append to replay buffer
-            ReplayBuffer.put([state, action, reward, next_state, terminated, truncated])
+        # Append to replay buffer
+        ReplayBuffer.put([state, action, reward, next_state, terminated, truncated])
 
-            # Update Q Network
-            if ReplayBuffer.size() > 100:
-                  Update_Q(ReplayBuffer, Q, Q_target, Q_optimizer)
+        # Update Q Network
+        if ReplayBuffer.size() > 1000:
+              Update_Q(ReplayBuffer, Q, Q_target, Q_optimizer)
 
-            # Periodic Update
-            if max_time_steps % 10 == 0:
-                Q_target.load_state_dict(Q.state_dict())
+        # Periodic Update
+        if max_time_steps % 10 == 0:
+            Q_target.load_state_dict(Q.state_dict())
 
-            if terminated or truncated:
-                  break
+        if terminated or truncated:
+              break
 
-            state = next_state
+        state = next_state
 
-      reward_history.append(total_reward)
-      avg = sum(reward_history) / len(reward_history)
-      print('episode: {}, reward: {:.1f}, avg: {:.1f}'.format(episode, total_reward, avg))
+    reward_history.append(total_reward)
+    avg = sum(reward_history) / len(reward_history)
+    print('episode: {}, reward: {:.1f}, avg: {:.1f}'.format(episode, total_reward, avg))
 
 env.close()

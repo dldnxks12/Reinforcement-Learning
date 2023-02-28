@@ -13,19 +13,22 @@ print(f"Currently working on {device}")
 
 class QNetwork(nn.Module):
       def __init__(self):
-            super().__init__()
-            self.fc   = nn.Linear(4, 256) # Input : 4개의 state
-            self.fcQ1 = nn.Linear(256, 32)
-            self.fcQ2 = nn.Linear(32, 2) # Output : 2개 Action - left/right
+            super().__init__()  # nn.Module의 constructor bringing
 
-      def forward(self, states):
-            states  = self.fc(states)
-            states  = F.relu(states)
-            states  = self.fcQ1(states)
-            states  = F.relu(states)
-            actions = self.fcQ2(states)
+            self.fc1 = nn.Linear(4, 512)
+            self.fc2 = nn.Linear(512, 256)
+            self.fc3 = nn.Linear(256, 256)
 
-            return actions
+            self.fc_q = nn.Linear(256, 2)
+
+      def forward(self, state):
+            x = F.relu(self.fc1(state))
+            x = F.relu(self.fc2(x))
+            x = F.relu(self.fc3(x))
+            q = self.fc_q(x)
+
+            return q
+
 
 class ReplayBuffer_():
       def __init__(self):
@@ -74,7 +77,7 @@ ReplayBuffer = ReplayBuffer_()
 gamma = 0.99
 
 def Update_Q(buffer, Q, Q_target, Q_optimizer):
-      states, actions, rewards, next_states, terminateds, truncateds = buffer.sample(128)
+      states, actions, rewards, next_states, terminateds, truncateds = buffer.sample(batch_size)
 
       loss = 0
       for state, action, reward, next_state, terminated, truncated in zip(states, actions, rewards, next_states, terminateds, truncateds):
@@ -97,13 +100,15 @@ def Update_Q(buffer, Q, Q_target, Q_optimizer):
             action = int(action)
             loss += (y - Q(state)[action])**2
 
-      loss = loss / 128
+      loss = loss / batch_size
 
+      print(loss)
       Q_optimizer.zero_grad()
       loss.backward()
       Q_optimizer.step()
 
 env = gym.make("CartPole-v1") #, render_mode = "human")
+batch_size = 32
 
 for episode in range(10000):
 
@@ -119,10 +124,6 @@ for episode in range(10000):
                   else:
                         action = torch.argmax(Q(state)).item()
 
-            if random.random() < 0.01:
-                  action = env.action_space.sample()
-            else:
-                  action = torch.argmax(Q(state)).item()
             next_state, reward, terminated, truncated, info = env.step(action)
             next_state = torch.tensor(next_state).float().to(device)
             total_reward += reward
