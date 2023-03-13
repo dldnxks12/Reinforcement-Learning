@@ -34,7 +34,6 @@ class ActorCritic(nn.Module):
         v = self.fc_v(x)
         return v
 
-
 def train(global_model, rank):
     local_model = ActorCritic()
     local_model.load_state_dict(global_model.state_dict())
@@ -44,8 +43,8 @@ def train(global_model, rank):
     env = gym.make('CartPole-v1')
 
     for n_epi in range(max_train_ep):
-        done = False
         s = env.reset()[0]
+        done = False
         while not done:
             s_lst, a_lst, r_lst = [], [], []
             for t in range(update_interval):
@@ -64,6 +63,7 @@ def train(global_model, rank):
 
             s_final = torch.tensor(s_prime, dtype=torch.float)
             R = 0.0 if done else local_model.v(s_final).item()
+
             td_target_lst = []
             for reward in r_lst[::-1]:
                 R = gamma * R + reward

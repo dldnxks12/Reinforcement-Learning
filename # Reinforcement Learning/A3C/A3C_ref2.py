@@ -261,6 +261,9 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         device = torch.device("cuda")
 
+    # cpu 에서만 동작한다...
+    device = torch.device("cuda")
+
     np.random.seed(seed)
     random.seed(seed)
     seed_torch(seed)

@@ -124,7 +124,7 @@ def train(memory, V, V_target, V_optimizer):
     pi_optimizer.step()
 
 #env = gym.make('CartPole-v1', render_mode = 'human')
-env = gym.make('CartPole-v1') #, render_mode = 'human')
+env = gym.make('CartPole-v1')#, render_mode = 'human')
 
 while episode < MAX_EPISODE:
 
@@ -149,8 +149,8 @@ while episode < MAX_EPISODE:
         if truncated or terminated:
             break
 
-    if memory.size() > 2000:
-        train(memory, V, V_target, V_optimizer)
+        if memory.size() > 2000:
+            train(memory, V, V_target, V_optimizer)
 
         if episode % 10 == 0:
             soft_update(V_target, V)

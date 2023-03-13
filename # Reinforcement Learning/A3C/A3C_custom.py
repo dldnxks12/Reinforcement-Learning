@@ -2,7 +2,8 @@
 
 My first distributed reinforcement learning - A3C
 
-*reference : https://github.com/keep9oing/PG-Family/blob/main/A3C.py
+*reference1 : https://github.com/keep9oing/PG-Family/blob/main/A3C.py
+*reference2 : https://github.com/seungeunrho/minimalRL/blob/master/a3c.py
 
 """
 
@@ -33,12 +34,12 @@ class ActorCritic(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc_pi(x)
         prob = F.softmax(x, dim=softmax_dim)
-        return prob
+        return prob # Return probabilities for each discrete action
 
     def v(self, x):
         x = F.relu(self.fc1(x))
         v = self.fc_v(x)
-        return v
+        return v # Return approximated value function
 
 def seed_torch(seed):
     torch.manual_seed(seed) # seed 고정
@@ -50,7 +51,7 @@ def seed_torch(seed):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-def train(global_model, rank):
+def train(global_model, rank, device):
 
     # Fixing seed for reducibility
     np.random.seed(seed + rank)
@@ -59,7 +60,7 @@ def train(global_model, rank):
 
     local_model  = ActorCritic().to(device)
     local_model.load_state_dict(global_model.state_dict())
-    global_optimizer  = optim.Adam(global_model.parameters(), lr = 0.0002)
+    optimizer  = optim.Adam(global_model.parameters(), lr = 0.0002)
 
     env = gym.make("CartPole-v1")
     update_interval = 5
@@ -84,7 +85,7 @@ def train(global_model, rank):
                 if done:
                     break
 
-            s_final = torch.tensor(next_state, dtype = torch.float).to(device)
+            s_final = torch.tensor(next_state, dtype=torch.float).to(device)
             R = 0.0 if done else local_model.v(s_final).item()
 
             td_target_list = []
@@ -104,16 +105,16 @@ def train(global_model, rank):
 
             # Critic loss + Actor loss
             loss = advantage.detach() * (-torch.log(pi_a)) + F.smooth_l1_loss(local_model.v(states), td_targets.detach())
-            global_optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.mean().backward()
             for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
                 global_param._grad = local_param.grad
-            global_optimizer.step()
+            optimizer.step()
             local_model.load_state_dict(global_model.state_dict())
     print(f"# ------------------------ P {rank} ends ----------------------------- #")
     env.close()
 
-def test(global_model):
+def test(global_model, device):
     env = gym.make('CartPole-v1')
     score = 0.0
     print_interval = 20
@@ -137,19 +138,19 @@ def test(global_model):
 
 actor_lr = 0.0002
 critic_lr = 0.0002
-episodes = 10000
+episodes = 300
 gamma = 0.98
 batch_size = 5
 seed = 100
-
-hidden_layer_num = 2
-hidden_dim_size = 128
 
 if __name__ == "__main__":
     # set gym environment
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
+
+    device = 'cpu'  # Work well
+    #device = 'cuda' # Work bad
 
     # Seed fixing
     seed_torch(seed)     # torch seed fix
@@ -173,9 +174,9 @@ if __name__ == "__main__":
     processes = []
     for rank in range(process_num):  # + 1 for test process
         if rank == 0:
-            p = mp.Process(target=test, args=(global_model,))
+            p = mp.Process(target=test, args=(global_model, device))
         else:
-            p = mp.Process(target=train, args=(global_model, rank,))
+            p = mp.Process(target=train, args=(global_model, rank, device))
         p.start()
         processes.append(p)
     for p in processes:
