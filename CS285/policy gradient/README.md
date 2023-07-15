@@ -43,6 +43,8 @@
 
     # Reducing Variance in PG
 
+      ref : [https://talkingaboutme.tistory.com/entry/RL-CS285-Reducing-Variance]
+
       이미 공부하면서 자주 봤듯이, PG의 variance를 줄이는 방법들이 많이 제안된다. 
 
       이 중 baseline 방법을 좀 살펴보자.
