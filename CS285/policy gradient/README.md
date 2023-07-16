@@ -3,6 +3,14 @@
 
 ---
 
+- `list`
+
+      PG의 문제점 2가지
+      1. high variance   -> sol. reducing variance
+      2. numerical issue -> sol. natural pg (or covariant pg)
+
+---
+
 
     # PG가 가끔 잘 동작하지 않는 이유 
 
@@ -80,3 +88,117 @@
       But we can modify with importance sampling 
 
       Importance sampling -- unbiased. but variance는 바뀔 수 있다. 
+
+
+
+--- 
+
+
+    # PG의 numerical issue (especially in Continuous action spaces.)
+
+    # gradient descent method 
+    (1) : θ <- θ + α∇J(θ) 
+    
+    (1) 에서 step size α를 결정하는 건 매우매우 조심스럽게 진행해야 된다. 
+    
+    왜? some parameters in θ change probabilities a lot more than other!    
+    즉, θ = (a, b)일 때, a는 매우 민감하고, b는 매우 둔감할 때 이 둘 간의 trade-off를 잘 고려한 step size α가 필요!
+    
+    결론적으로 우리는 step size α를 잘 골라서 모든 parameter가 gradient update를 통해 optimal 한 값으로 가길 원한다. 
+
+    So, parameter space에서 alpha를 잘 조정해서 gradient update하기는 까다롭다.
+
+
+
+    # fisrt-order gradient descent method view     
+    
+    위 (1) 식을 mathematical하게 보자면, 1차 gradient descent의 constraint optimization으로 볼 수 있다.    
+        
+    (2) : θ* <- argmax(θ*-θ)^T * ∇J(θ)  ,   s.t ||θ*-θ||^2 < ε 
+
+    (2) 식은 parameter space에서 ε bound 내부에서 J(θ)의 gradient를 가장 크게 update하게 해주는 θ*를 찾는 것이다. 
+
+    여기서 step size α는 위 constraint optimization 식의 Lagrange multiplier로 볼 수 있다. 
+
+        위 (2) 식의 ∇J(θ)는 J(θ)의 1차 선형 근사이므로, 아주 작은 region에서만 이 식이 valid하다.
+        그래서 step size α가 큰 값이 될 수 없는 것이다!!
+
+    근데 이 region을 선택하는게 좀 이상하다.    
+    위에서 말했듯, 그 region 안에서 parameter를 선택해야하는데, 어떤 parameter는 예민하고 또 어떤 parameter는 둔감한데
+    이 space 안에서 딱 하나 골라서 그게 해결될까?
+
+
+    그래서 우리는 이 update 과정을 parameter space에서가 아니라 policy space에서 다루고자 한다. 
+    (Covariant : space의 기저가 바뀌어도 vector에 영향을 미치지 않은 것.)
+    즉, (2) 식의 이 constraint가 잘못된 space에서 이루어지고 있다. 
+    
+        - s.t ||θ*-θ||^2 < ε  : Wrong space !!
+
+    우리는 이 constraint space를 parameter space에서 policy space로 옮긴다.
+
+        - s.t D( π(θ*), π(θ) ) < ε  : Parameter independent divergence measure!!
+
+    위 같이 분포가 크게 바뀌지 않는 것으로 제약 조건을 바꾼다! 
+    이렇게 하면 우리가 parameter를 어떻게 구성하든지 전혀 영향이 없다. 
+
+    (2)  : θ* <- argmax(θ*-θ)^T * ∇J(θ)  ,   s.t ||θ*-θ||^2     < ε 
+    (2*) : θ* <- argmax(θ*-θ)^T * ∇J(θ)  ,   s.t D(π(θ*), π(θ)) < ε
+
+
+    Natural policy gradient / Trust Region policy optimization paper를 참고하면 알겠지만, 
+    KL divergence를 2차 taylor expansion하면 위의 제약조건식을 다음과 같이 바꿀 수 있다!
+    
+    (3) : D(π(θ*), π(θ)) ≒ (θ*-θ)F(θ*-θ) - KL diverence의 2차 선형 근사
+
+        F : Fisher information matrix (sample mean으로 쉽게 구할 수 있음)
+
+    이제 위 (2*) 식의 Langrange으로 풀고 optimal solution을 구하면 gradient update가 다음과 같은 식으로 정리된다.
+
+    
+    (4) : θ <- θ + α(F-1)∇J(θ)
+    
+        where F-1 is inverse fihser information matrix.
+        where α is Lagrange multiplier
+
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
