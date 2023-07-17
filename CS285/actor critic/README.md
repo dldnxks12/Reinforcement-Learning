@@ -20,16 +20,28 @@ Replay buffer에 들어있는 지난 actor(old parameter)들이 생성해냈던 
       PG : unbiased / high variance
       AC : biased   / low variance -- 하지만 만약 Critic이 compatible FA? unbiased!
 
+---
+
+    # Policy update : ∇J(θ)
         
-      PG의 REINFORCE 알고리즘에서 Q(st, at)부분은 Gt로 stochastic하게 Q(s,a)를 근사할 수 있다.
+      PG의 REINFORCE 알고리즘에서 ∇J의 Q(st, at)부분은 Gt로 stochastic하게 Q(s,a)를 근사할 수 있다.
         - Q(st,at) ≈ Gt
 
       근데, 이 방법은 variance를 크게 증가시키기 때문에 학습 속도나 수렴 속도를 매우 느리게 만든다.
-      그래서 Q(st,at)를 그냥 w로 parameterize된 Qw(st, at)로 근사하는 방법이다.
+      또한 reward를 모두 모아야하기 때문에, episodic case에만 사용이 가능. 
+      
+      그래서 Q(st,at)를 'w로 parameterize'된 Qw(st, at)로 근사하는 방법이다.
 
         - compatible FA를 따르면, Qw도 여전히 unbiased estimator이다. 
 
 
+    # Value function update : ∇L(w)
+
+        Value function의 ideal target은 당연히 true value이다.
+        하지만, true value를 찾기 어려우므로, r + γV*로 대체한다. (bootstrap)
+
+        supervised regression : L = sum(||r+γV* - V||^2)
+    
 ---
 
 
@@ -41,9 +53,15 @@ Replay buffer에 들어있는 지난 actor(old parameter)들이 생성해냈던 
 ---
 
     
-    # on policy / off policy actor-critic algorithm
+    # online actor-critic algorithm
 
-      # on policy actor-critic 
+      # on-policy actor-critic (online)
+
+      online으로 agent가 env랑 상호작용하면서 얻는 sample을 사용해서 그때그때 update할 수 있다.
+      But as we know, stochastic GD에서 sample 1개로 하는 건 너무 variance가 크다.
+      그래서 보통 batch update , mini-batch update를 수행한다.
+      
+      아래 두 방법은 on-policy actor-critic에서 batch update를 하는 방법들이다.
       
       1) synchronous parallel actor-critic :
         1. run multiple simulators and get transitions from multiple simulators.
@@ -65,7 +83,9 @@ Replay buffer에 들어있는 지난 actor(old parameter)들이 생성해냈던 
       *동기적 방법보다 비동기적 방법이 더 빠르다.
       *비동기적 방법에서 약간의 time lag는 괜찮다. 잘 동작한다.
 
-  
+      
+      # off-policy actor-critic (online & use replay buffer)
+      
       위 asynchronous actor-critic에서는 조~금 오래된 actor에서 뽑아낸 transition을 써도 상관없다고 했다.
       근데 만약 좀 많~이 오래된 actor에서 뽑아낸 transition을 사용해서 update 해도 된다면??
       그럼 multiple threads가 필요없을지도 모른다!
@@ -73,10 +93,8 @@ Replay buffer에 들어있는 지난 actor(old parameter)들이 생성해냈던 
       즉, transition들을 바구니에 잘 담아두고서, 지금의 actor(parameter)로 뽑아낸 transition으로도 update하고,
       그리고 옛날 transition들로도 update해도 된다는 얘기잖아?
   
-      이게 off policy actor-critic의 개념이다. (on policy / off policy 개념과 살짝 다른데, 비슷하기도 하고?)
+      이게 off-policy  actor-critic의 개념이다. 
       
-      # off policy actor-critic
-
         1. 1개의 thread를 사용한다.
         2. 생성되는 transition들을 모두 replay buffer에 담는다.
         3. replay buffer에서 transition들을 batch 만큼 load해서 update한다. 
