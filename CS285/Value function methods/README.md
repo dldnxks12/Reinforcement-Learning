@@ -158,5 +158,37 @@
       FQI는 Q Learning의 offline batch version.
  
 
+--- 
+
+- `Convergence of non-tabular case `
+
+      Value iteration의 경우 Bellman operator로 인한 contraction mapping이다.
+        1. B - Bellman operator : contraction mapping (max norm)
+
+        v = Bv : converge!
+  
+      Fitted Value Iteration의 경우
+        1. B - Bellman operator : contraction mapping (max norm)
+        2. X - Projection operator : contraction mapping (L2 norm)
+
+      하지만 v = BXv 는 어떤 contraction도 아니다. : converge X !
+      즉,
+        Backup is contraction,
+        Projection is also contraction,
+        But, Backup + Projection is not a constraction..!
+
+      Fitted Q Iteration도 마찬가지이고, 당연히 Q learning도 마찬가지이다.
+      같은 이유로, actor-critic의 value function도 사실상 converge하지 않는다.
+  
+      근데, gradient descent는 convex function일 경우 converge하지 않나?
+      사실... Q learning은 gradient descent가 아니다. 그냥 regression일 뿐..!
+
+
+      So... Fitted Q Learning, Q-Learning, ... does not converge with FA!
+
+      이 모든 문제를 in practice 잘 동작하게 다음 lecture에서 고친다. 
+
+      
+  
 
 
