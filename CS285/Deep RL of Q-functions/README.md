@@ -4,7 +4,7 @@
       But, 그중 Q-Learning을 변형하면 그럼에도 아주 유용하고 강력한 RL 알고리즘이 탄생한다. 
 
 ---
-
+      
       # Convergence of Q-learning (online / off-policy)
 
         *Gradient descent? X, Supervised Regression
@@ -29,47 +29,124 @@
 
 ---
 
-    # Deep Q Learning (DQN)
+      # Deep Q Learning (DQN)
+
+      Deep Q-Learning : Q-learning과 Fitted Q Iteration의 mixture with replay buffer & target 
     
-      # Solution of correlated samples in Q-Learning - replay buffer
+            # Solution of correlated samples in Q-Learning - replay buffer
+      
+              Method 1) Parallel Q Learning
+              
+              Levine은 online actor-critic 방법과 같이 Q learning도 parallel하게 해서 correlation 문제를 완화한다.
+                - Actor-Critic 때와 동일하게 동기 / 비동기 방법이 있다.
+                - 다만 Q learning은 off-policy의 성격을 띄기 때문에 비동기 방법을 쓸 때, 
+                  조금 더 오래된 sample을 써도 문제가 거의 없다.           
+              즉, multi-thread로 agent를 여러 놈 만들고 각각 transition을 가져오게 해서 batch update 한다. 
+              correlation 문제를 완전히 해결하지는 못해도 완화시킬 수는 있다. 
+      
+              Method 2) Q Learning with Replay buffer - unstable Deep Q-learning (DQN)
+              
+              또 한가지 방법으로는, 아주 잘 알고 있는 replay buffer를 사용하는 것이다. 
+              이렇게 하면, Fitted Q Iteration과 아주 비슷한 형태가 된다.
+              Fitted Q Iteration의 (2), (3) 과정은 동일하고, 
+              dataset을 모으는 과정이 replay buffer에서 load 해오는 것으로 바뀌면 된다. 
+              이제 sample들은 더이상 correlated 하지 않다. -> SGD의 i.i.d 가정이 성립.
+      
+              사실 이 형태가 DQN의 초기 형태이다. 
+              Replay buffer를 통해 기존 Q-learning의 correlation 문제를 해결했다.
+              
+              이제 학습 안정성을 위해 한 가지 요소만 더 추가해보자.
+      
+            
+            
+            # Improve stability - Target Network 
+              
+              Q learning의 unstable 문제는 moving target이 원인 중 하나이다.
+              그럼? frozen target을 만들어주면 된다. This is target network!
+        
 
-        Method 1) Parallel Q Learning
-        
-        Levine은 online actor-critic 방법과 같이 Q learning도 parallel하게 해서 correlation 문제를 완화한다.
-          - Actor-Critic 때와 동일하게 동기 / 비동기 방법이 있다.
-          - 다만 Q learning은 off-policy의 성격을 띄기 때문에 비동기 방법을 쓸 때, 
-            조금 더 오래된 sample을 써도 문제가 거의 없다.           
-        즉, multi-thread로 agent를 여러 놈 만들고 각각 transition을 가져오게 해서 batch update 한다. 
-        correlation 문제를 완전히 해결하지는 못해도 완화시킬 수는 있다. 
-
-        Method 2) Q Learning with Replay buffer - unstable Deep Q-learning (DQN)
-        
-        또 한가지 방법으로는, 아주 잘 알고 있는 replay buffer를 사용하는 것이다. 
-        이렇게 하면, Fitted Q Iteration과 아주 비슷한 형태가 된다.
-        Fitted Q Iteration의 (2), (3) 과정은 동일하고, 
-        dataset을 모으는 과정이 replay buffer에서 load 해오는 것으로 바뀌면 된다. 
-        이제 sample들은 더이상 correlated 하지 않다. -> SGD의 i.i.d 가정이 성립.
-
-        사실 이 형태가 DQN의 초기 형태이다. 
-        Replay buffer를 통해 기존 Q-learning의 correlation 문제를 해결했다.
-        
-        이제 학습 안정성을 위해 한 가지 요소만 더 추가해보자.
+- `General view `
 
 
-    # Improve stability - Target Network 
-        
-        
-        
+        Q-Learning, Fitted Q Iteration은 DQN의 special case이다.
+        Lecture를 통해 확인해볼 수 있고, 요약하자면 process의 순서, 횟수의 차이일 뿐이다.
+
+
+---
+
+- `Improving Q-Learning`
+
+
+      # Overetimation bias in Q-learning
+
+            Are the Q-values accurarte?
+            There's overestimation bias!
+                  - Q-learning의 성능 저하의 큰 원인
+
+            Q value가 정확한게 왜 중요하지?
+                  - 부정확한 target을 만들어내기 때문
+                  - moving target은 학습 불안정성을 야기했는데
+                  - 부정확한 Q value는 학습 자체를 망칠 수 있다!!
   
+            So, 'Double Q-Learning' has proposed!!
+
+
+---
+
+- `Q-Learning with continuous actions`
+
+
+      # Continuous acion이 왜 문제인데?
+              - 더이상 greedy policy를 쓸 수가 없다...!
+              - max operator로 implict하게 policy improvement를 수행해왔다..
+
+      # How do we perform the max operator?
+            Option 1) Gradient based optimization (e.g., SGD)
+            Option 2) Use function class that is easy to optimize
+                  - Q function을 quadratic function으로 구성 (e.g., NAF Architecture)
+            Option 3) Learn an approximate maximizer
+                  - train another network X_θ(s) such that X_θ(s) ≈ argmax Q_ϕ(s, a).
+                  - e.g., DDPG (really approximate Q-learning)
+                    
+      
+      # Option 1 : Q-Learning with stochastic optimization 
+            1) Simple solution : approximate max operation
+                  max Q(s,a) ≈ max {Q(s, a1), Q(s, a2), Q(s, a3), ... Q(s, aN),}
+                        - action 들은 uniform distribution 같은 어떤 분포에서 sampling한다.
+                        - exact max는 아니고, approximate하게 max를 수행할 수 있다. 
+
+            2) More accurate solution : cross-entropy method (CEM) (* works OK for up to 40 dims)
+                        - used in model-based
+                        - simple iterative stochastic optimization
+  
+            3) Fancier version of CEM : CMA-ES
+                        - substantially less simple iterative stochastic optimization 
+  
+
+      # Option 3 : Learn an approximate maximizer
+
+            이미 알고 있듯이,
+            DPG를 통해 discrete action space -> continuous action space로 확장되었고,
+            DDPG를 통해 더 고차원의 continuous action space에도 RL을 적용할 수 있게 되었다.
+
+  
+  
+            
+                  
+
+
+      
+  
+      
+            
+            
+  
+
         
-    
-      
 
-      
+  
 
-      
-      
-      
+            
 
       
       
