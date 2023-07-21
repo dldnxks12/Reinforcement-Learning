@@ -131,11 +131,33 @@
 
   
   
-            
-                  
+---
+
+- `Practical tips for Q-Learning`
+
+            *Q-Learning을 base로 하는 알고리즘에도 효과적일지는 잘 모르겠다.
+
+            1) Bellman error gradients can be big 
+              - use clip gradient or Huber loss
+
+            2) Double Q-Learning 
+              - simple and no downsides
+
+            3) N-step returns
+  
+            4) Schedule 
+                  Exploration   : high to low
+                  Learning rate : high to low
+                  - Adam optimizer can help, too
+
+            5) Run multiple random seeds
+                  - it's very inconsistent between runs 
+
 
 
       
+
+  
   
       
             
