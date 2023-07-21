@@ -25,7 +25,7 @@
               (sequential states are strongly correlated)
             - 이 방법은 stochastic gradient descent의 가정을 위배한다. (i.i.d)
     
-      아무튼 위 이유로 Q-learning의 수렴성이 보장되지 않는 다는 이야기를 마칠 수 있을 것 같다.
+      아무튼 위 이유로 Q-learning의 수렴성이 보장되지 않고 불안정하다는 이야기를 마칠 수 있을 것 같다.
 
 ---
 
