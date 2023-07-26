@@ -1,8 +1,6 @@
-### Lecture 15 : Offline RL 
+### Lecture 15 : Offline RL 1
 
 offline RL / batch RL / fully off-policy RL --- someone else fullfilled my buffer for me with some policy beforehand.
-
-behavior policy : somebody else collected buffer by running some other policy, this is behavior policy !
 
 offline RL : behavior policy ? any kind of policy !
 imiatation learning : behavior policy ? expert policy !
@@ -77,8 +75,7 @@ better intuition : get order from chaos!
 
 Why is offline RL Hard???
 
-  - out-of-distribution / generalization
-
+  - out-of-distribution 
     
     직선 도로를 달리는 driving human을 통해 얻은 데이터셋을 생각해보자.
 
@@ -112,9 +109,17 @@ Why is offline RL Hard???
 
 
 ---
+
     
   - Distribution shift in a nutshell (see ood in mathematically)
 
     distribution shift : one particular distribution we use in training, and we need to perform well.. under a 'different' distribution.
 
-    because of this distribution mismatch, the performance may poor. 
+    because of this distribution mismatch, the performance may poor.
+
+
+---
+
+   
+
+  
